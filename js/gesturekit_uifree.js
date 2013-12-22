@@ -74,12 +74,22 @@ var GestureKit;
 			blob = this.blob.getBlob();
 		}
 
-		//append gesturekit div.
-		var $gko = $('<div />').appendTo('body');
-		$gko.attr('id', 'gesturekit');
-		//put site content into gesturekit.
-		$gko.append($("body").find( "*" ));
-		gesturekit_container = "gesturekit";
+		// //append gesturekit div.
+		// var $gko = $('<div />').appendTo('body');
+		// $gko.attr('id', 'gesturekit');
+		// //put site content into gesturekit.
+		// $gko.append($("body").find( "*" ));
+		// gesturekit_container = "gesturekit";
+
+        gesturekit_container = "gesturekit";
+
+        var $body = $('body');
+        var $bodyChildren = $body.children().detach();
+        var $gkContainer = $('<div id="'+ gesturekit_container +'"></div>');
+
+        $body.append($gkContainer);
+        $gkContainer.append($bodyChildren);
+
 
 		UIID = uiid;
 
