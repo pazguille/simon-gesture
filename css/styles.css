@@ -1,0 +1,49 @@
+body {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    font-family: "Helvetica Neue", Helvetica, Arial, serif;
+    margin: 0;
+}
+
+.gesture {
+    background-repeat: no-repeat;
+    background-size: cover;
+    height: 640px;
+    margin: auto;
+    width: 640px;
+}
+
+body.gesture-red {
+    background-color: #e74c3c;
+}
+
+section.gesture-red {
+    background-image: url('../assets/gk_red.svg');
+}
+
+body.gesture-blue {
+    background-color: #3498db;
+}
+
+section.gesture-blue {
+    background-image: url('../assets/gk_blue.svg');
+}
+
+body.gesture-yellow {
+    background-color: #f1c40f;
+}
+
+section.gesture-yellow {
+    background-image: url('../assets/gk_yellow.svg');
+}
+
+body.gesture-green {
+    background-color: #2ecc71;
+}
+
+section.gesture-green {
+    background-image: url('../assets/gk_green.svg');
+}
