@@ -31,43 +31,66 @@ body {
     margin: 0;
 }
 
-.gesture {
-    background-repeat: no-repeat;
-    background-size: contain;
-    background-position: center center;
+.gesture-viewport {
     display: table-cell;
+}
+
+.gesture-viewport {
     height: 100%;
     width: 100%;
 }
 
-body.gesture-red {
+.viewport .gesture-placeholder {
+
+}
+
+[class*="gesture-type"] {
+    display: block;
+    float: left;
+    height: 50%;
+    position: relative;
+    width: 50%;
+}
+
+[class*="gesture-type"]:after {
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center center;
+    content: '';
+    display: block;
+    width: 100%;
+    height: 100%;
+    margin: auto;
+}
+
+.gesture-type-red {
     background-color: #e74c3c;
 }
 
-section.gesture-red {
+.gesture-type-red:after {
     background-image: url('../assets/gk_red.svg');
 }
 
-body.gesture-blue {
+.gesture-type-blue {
     background-color: #3498db;
 }
 
-section.gesture-blue {
+.gesture-type-blue:after {
     background-image: url('../assets/gk_blue.svg');
 }
 
-body.gesture-yellow {
+.gesture-type-yellow {
     background-color: #f1c40f;
 }
 
-section.gesture-yellow {
+.gesture-type-yellow:after {
     background-image: url('../assets/gk_yellow.svg');
 }
 
-body.gesture-green {
+.gesture-type-green {
     background-color: #2ecc71;
 }
 
-section.gesture-green {
+.gesture-type-green:after {
     background-image: url('../assets/gk_green.svg');
 }
