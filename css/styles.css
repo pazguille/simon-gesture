@@ -1,6 +1,11 @@
+html {
+    height: 100%;
+}
+
 body {
     width: 100%;
     height: 100%;
+    display: table;
 }
 
 body {
@@ -10,10 +15,11 @@ body {
 
 .gesture {
     background-repeat: no-repeat;
-    background-size: cover;
-    height: 640px;
-    margin: auto;
-    width: 640px;
+    background-size: contain;
+    background-position: center center;
+    display: table-cell;
+    height: 100%;
+    width: 100%;
 }
 
 body.gesture-red {
