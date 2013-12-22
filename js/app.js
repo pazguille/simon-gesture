@@ -3,22 +3,81 @@
 (function (window) {
     'use strict"';
 
-    function Simon() {
-        this._init();
+    function Simon(viewport) {
+        this._init(viewport);
     }
 
     Simon.prototype.emitter = new Jvent();
 
-    Simon.prototype._init = function(first_argument) {
-        this.colors = ['red', 'blue', 'green', 'yellow'];
-        this.colorsCollection = [];
+    Simon.prototype._init = function(viewport) {
+        this.win = window;
+
+        this.viewport = viewport;
+
+        this.colors = ['red', 'blue'];
+
+        this.index = 0;
+
+        this.collection = [];
+
+        this.start();
+
+        return this;
+    };
+
+    Simon.prototype.start = function() {
+        this.index = 0;
+        this.randomColor();
+
+        return this;
+    };
+
+    Simon.prototype.restart = function() {
+        this.index = 0;
+        this.collection.length = 0;
+
+        this.start();
+
         return this;
     };
 
     Simon.prototype.randomColor = function() {
         this.currentColor = shuffle.pick(this.colors);
-        this.colorsCollection.push(this.currentColor);
+        this.collection.push(this.currentColor);
+
+        console.log(this.collection);
+
         return this;
+    };
+
+    Simon.prototype.checkColor = function (color) {
+        var matched = this.collection[this.index] === color;
+        this.index += 1;
+
+        return matched;
+    };
+
+    Simon.prototype.review = function () {
+        // this.viewport.className = 'viewport gesture-' +  this.currentColor;
+
+        return this;
+    };
+
+    Simon.prototype.motion = function (motion) {
+        if (this.checkColor(motion)) {
+            console.log('Good!');
+
+            if (this.index === this.collection.length) {
+                this.index = 0;
+                this.randomColor();
+                this.review();
+            }
+
+        } else {
+            console.log('Wrong!');
+            this.restart();
+            this.review();
+        }
     };
 
     window.Simon = Simon;
