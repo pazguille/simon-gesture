@@ -17,7 +17,7 @@
 
         this.viewport = viewport;
 
-        this.colors = ['red', 'blue'];
+        this.colors = ['red', 'blue', 'green', 'yellow'];
 
         this.index = 0;
 
@@ -27,7 +27,7 @@
 
         this.feedbackViewer = document.querySelector('.simon-feedback');
 
-        this.start();
+        // this.start();
 
         return this;
     };
