@@ -49,9 +49,9 @@ body {
     text-align: center;
     vertical-align: middle;
     color: #fff;
-    font-size: 2em;
-    height: 80px;
-    line-height: 80px;
+    font-size: 1.5em;
+    height: 48px;
+    line-height: 48px;
 }
 
 [class*="simon-type"] {
