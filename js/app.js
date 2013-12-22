@@ -4,7 +4,7 @@
     'use strict"';
 
     var document = window.document,
-        feedbackTime = 1000;
+        feedbackTime = 1200;
 
     function Simon(viewport) {
         this._init(viewport);
