@@ -7,13 +7,18 @@
         this._init();
     }
 
+    Simon.prototype.emitter = new Jvent();
+
     Simon.prototype._init = function(first_argument) {
         this.colors = ['red', 'blue', 'green', 'yellow'];
-        // body...
+        this.colorsCollection = [];
+        return this;
     };
 
     Simon.prototype.randomColor = function() {
-        return shuffle(this.colors);
+        this.currentColor = shuffle.pick(this.colors);
+        this.colorsCollection.push(this.currentColor);
+        return this;
     };
 
     window.Simon = Simon;
