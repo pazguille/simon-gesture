@@ -99,6 +99,8 @@
             );
         }
 
+        window.setTimeout(function () { that.feedbackViewer.style.display = 'none'; }, feedbackTime);
+
         return this;
     };
 
@@ -108,10 +110,20 @@
         window.setTimeout(function () { that.feedbackViewer.innerHTML = ''; }, feedbackTime);
 
         if (this.checkColor(motion)) {
-            this.feedbackViewer.innerHTML = 'Step ' + this.index + '/' + this.collection.length + ' done! Continue!';
+            // this.feedbackViewer.innerHTML = 'Step ' + this.index + '/' + this.collection.length + ' done! Continue!';
+            that.activeElement = window.document.querySelector('.simon-type-' + motion);
+            that.activeElement.className += ' simon-visible';
+            window.setTimeout(function () {
+                        if (that.activeElement !== null) {
+                            that.activeElement.className = that.activeElement.className.replace(' simon-visible', '');
+                        }
+                },
+                200
+            );
 
             if (this.index === this.collection.length) {
-                this.feedbackViewer.innerHTML = 'Perfect play next level!';
+                this.feedbackViewer.innerHTML = 'Perfect play next level...';
+                this.feedbackViewer.style.display = 'block';
                 this.index = 0;
                 this.randomColor();
                 this.review();
@@ -119,6 +131,7 @@
 
         } else {
             this.feedbackViewer.innerHTML = 'Game Over!';
+            this.feedbackViewer.style.display = 'block';
             this.restart();
             this.review();
         }
