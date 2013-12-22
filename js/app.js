@@ -3,6 +3,9 @@
 (function (window) {
     'use strict"';
 
+    var document = window.document,
+        reviewTime = 1000;
+
     function Simon(viewport) {
         this._init(viewport);
     }
@@ -20,6 +23,10 @@
 
         this.collection = [];
 
+        this.activeElement = null;
+
+        this.feedbackViewer = document.querySelector('.simon-feedback');
+
         this.start();
 
         return this;
@@ -28,6 +35,7 @@
     Simon.prototype.start = function() {
         this.index = 0;
         this.randomColor();
+        this.review();
 
         return this;
     };
@@ -42,8 +50,17 @@
     };
 
     Simon.prototype.randomColor = function() {
+
         this.currentColor = shuffle.pick(this.colors);
         this.collection.push(this.currentColor);
+
+        // if (this.activeElement !== null) {
+        //     this.activeElement.className = this.activeElement.className.replace(' simon-visible', '');
+        // }
+
+        // this.activeElement = document.querySelector('.simon-type-' + this.currentColor);
+
+        // this.activeElement.className += ' simon-visible';
 
         console.log(this.collection);
 
@@ -58,23 +75,59 @@
     };
 
     Simon.prototype.review = function () {
-        // this.viewport.className = 'viewport gesture-' +  this.currentColor;
+        var index = 0,
+            that = this;
+
+        //alert(this.collection.toString());
+
+        for (index = 0; index < this.collection.length; index += 1) {
+
+            // muestro el activo
+            window.setTimeout(function (color) {
+
+                    return function () {
+                        that.activeElement = window.document.querySelector('.simon-type-' + color);
+                        that.activeElement.className += ' simon-visible';
+                    }
+
+                }(this.collection[index]),
+                (1000 * (index + 1))
+            );
+
+            // oculto el activo
+            window.setTimeout(function (color) {
+
+                    return function () {
+                        if (that.activeElement !== null) {
+                            that.activeElement.className = that.activeElement.className.replace(' simon-visible', '');
+                        }
+                    }
+
+                }(this.collection[index]),
+                (1000 * (index + 2) - 200)
+            );
+        }
 
         return this;
     };
 
     Simon.prototype.motion = function (motion) {
+        var that = this;
+
+        window.setTimeout(function () { that.feedbackViewer.innerHTML = ''; }, 1000);
+
         if (this.checkColor(motion)) {
-            console.log('Good!');
+            this.feedbackViewer.innerHTML = 'Step ' + this.index + '/' + this.collection.length + ' done! Continue!';
 
             if (this.index === this.collection.length) {
+                this.feedbackViewer.innerHTML = 'Perfect play next level!';
                 this.index = 0;
                 this.randomColor();
                 this.review();
             }
 
         } else {
-            console.log('Wrong!');
+            this.feedbackViewer.innerHTML = 'Game Over!';
             this.restart();
             this.review();
         }

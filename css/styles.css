@@ -31,28 +31,45 @@ body {
     margin: 0;
 }
 
-.gesture-viewport {
+.simon-viewport {
     display: table-cell;
 }
 
-.gesture-viewport {
+.simon-viewport {
     height: 100%;
     width: 100%;
 }
 
-.viewport .gesture-placeholder {
-
+.simon-feedback,
+.simon-feedback-visible {
+    background-color: #fff;
+    /*border-radius: 100%;*/
+    bottom: 30%;
+    height: 200px;
+    left: 50%;
+    line-height: 200px;
+    margin-top: -100px;
+    margin-left: -100px;
+    position: absolute;
+    top: 50%;
+    text-align: center;
+    vertical-align: middle;
+    width: 200px;
 }
 
-[class*="gesture-type"] {
+[class*="simon-type"] {
     display: block;
     float: left;
     height: 50%;
     position: relative;
     width: 50%;
+    -moz-transition: background-color 2s;
+    -webkit-transition: background-color 2s;
+    -o-transition: background-color 2s;
+    transition: background-color 2s;
 }
 
-[class*="gesture-type"]:after {
+[class*="simon-type"]:after {
     background-repeat: no-repeat;
     background-size: contain;
     background-position: center center;
@@ -61,36 +78,65 @@ body {
     width: 100%;
     height: 100%;
     margin: auto;
+    opacity: 0.5;
 }
 
-.gesture-type-red {
+[class*="simon-type"].simon-visible:after {
+    opacity: 1;
+}
+
+.simon-type-green {
+    background-color: #2ecc71;
+    /*border-radius: 50% 0 0 0;*/
+}
+
+.simon-type-green.simon-visible {
+    background-color: #40d47e;
+}
+
+.simon-type-green:after {
+    background-image: url('../assets/gk_green.svg');
+}
+
+.simon-type-red {
     background-color: #e74c3c;
+    /*border-radius: 0 50% 0 0;*/
 }
 
-.gesture-type-red:after {
+.simon-type-red.simon-visible {
+    background-color: #ea6153;
+}
+
+.simon-type-red:after {
     background-image: url('../assets/gk_red.svg');
 }
 
-.gesture-type-blue {
-    background-color: #3498db;
-}
-
-.gesture-type-blue:after {
-    background-image: url('../assets/gk_blue.svg');
-}
-
-.gesture-type-yellow {
+.simon-type-yellow {
     background-color: #f1c40f;
+    /*border-radius: 0  0 0 50%;*/
 }
 
-.gesture-type-yellow:after {
+.simon-type-yellow.simon-visible {
+    background-color: #f2ca27;
+}
+
+.simon-type-yellow:after {
     background-image: url('../assets/gk_yellow.svg');
 }
 
-.gesture-type-green {
-    background-color: #2ecc71;
+.simon-type-blue {
+    background-color: #3498db;
+    /*border-radius: 0  0 50% 0;*/
 }
 
-.gesture-type-green:after {
-    background-image: url('../assets/gk_green.svg');
+.simon-type-blue.simon-visible {
+    background-color: #4aa3df;
 }
+
+.simon-type-blue:after {
+    background-image: url('../assets/gk_blue.svg');
+}
+
+
+
+
