@@ -3,21 +3,48 @@
 (function (window) {
     'use strict"';
 
-    function Simon() {
-        this._init();
+    function Simon(viewport) {
+        this._init(viewport);
     }
 
     Simon.prototype.emitter = new Jvent();
 
-    Simon.prototype._init = function(first_argument) {
+    Simon.prototype._init = function(viewport) {
+        this.viewport = viewport;
+
         this.colors = ['red', 'blue', 'green', 'yellow'];
-        this.colorsCollection = [];
+
+        this.collection = [];
+
+        this.start();
+
+        return this;
+    };
+
+    Simon.prototype.start = function() {
+        this.updateViewport();
+
+        return this;
+    };
+
+    Simon.prototype.reset = function() {
+        this.collection.length = 0;
+        this.start();
+
         return this;
     };
 
     Simon.prototype.randomColor = function() {
         this.currentColor = shuffle.pick(this.colors);
-        this.colorsCollection.push(this.currentColor);
+        this.collection.push(this.currentColor);
+
+        return this;
+    };
+
+    Simon.prototype.updateViewport = function() {
+        this.randomColor();
+        this.viewport.className = 'viewport gesture-' +  this.currentColor;
+
         return this;
     };
 
