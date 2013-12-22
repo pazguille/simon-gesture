@@ -1,3 +1,21 @@
+
+/*
+    GESTURE KIT Specific overwrite
+*/
+
+#visor_container {
+    display: none;
+}
+
+body > * {
+    display: table;
+}
+
+
+/*
+    SIMON GAME app
+*/
+
 html {
     height: 100%;
 }
