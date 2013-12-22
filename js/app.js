@@ -4,7 +4,7 @@
     'use strict"';
 
     var document = window.document,
-        reviewTime = 1000;
+        feedbackTime = 1000;
 
     function Simon(viewport) {
         this._init(viewport);
@@ -54,14 +54,6 @@
         this.currentColor = shuffle.pick(this.colors);
         this.collection.push(this.currentColor);
 
-        // if (this.activeElement !== null) {
-        //     this.activeElement.className = this.activeElement.className.replace(' simon-visible', '');
-        // }
-
-        // this.activeElement = document.querySelector('.simon-type-' + this.currentColor);
-
-        // this.activeElement.className += ' simon-visible';
-
         console.log(this.collection);
 
         return this;
@@ -76,13 +68,16 @@
 
     Simon.prototype.review = function () {
         var index = 0,
-            that = this;
-
-        //alert(this.collection.toString());
+            that = this,
+            showTime,
+            hideTime,
+            hiddenTime = 200;
 
         for (index = 0; index < this.collection.length; index += 1) {
+            showTime = feedbackTime * (index + 1);
+            hideTime = feedbackTime * (index + 2) - hiddenTime;
 
-            // muestro el activo
+            // show the current element to memorize
             window.setTimeout(function (color) {
 
                     return function () {
@@ -91,20 +86,16 @@
                     }
 
                 }(this.collection[index]),
-                (1000 * (index + 1))
+                showTime
             );
 
-            // oculto el activo
-            window.setTimeout(function (color) {
-
-                    return function () {
+            // hide the current element to memorize
+            window.setTimeout(function () {
                         if (that.activeElement !== null) {
                             that.activeElement.className = that.activeElement.className.replace(' simon-visible', '');
                         }
-                    }
-
-                }(this.collection[index]),
-                (1000 * (index + 2) - 200)
+                },
+                hideTime
             );
         }
 
@@ -114,7 +105,7 @@
     Simon.prototype.motion = function (motion) {
         var that = this;
 
-        window.setTimeout(function () { that.feedbackViewer.innerHTML = ''; }, 1000);
+        window.setTimeout(function () { that.feedbackViewer.innerHTML = ''; }, feedbackTime);
 
         if (this.checkColor(motion)) {
             this.feedbackViewer.innerHTML = 'Step ' + this.index + '/' + this.collection.length + ' done! Continue!';
