@@ -10,9 +10,13 @@
     Simon.prototype.emitter = new Jvent();
 
     Simon.prototype._init = function(viewport) {
+        this.win = window;
+
         this.viewport = viewport;
 
-        this.colors = ['red', 'blue', 'green', 'yellow'];
+        this.colors = ['red', 'blue'];
+
+        this.index = 0;
 
         this.collection = [];
 
@@ -22,13 +26,16 @@
     };
 
     Simon.prototype.start = function() {
-        this.updateViewport();
+        this.index = 0;
+        this.randomColor();
 
         return this;
     };
 
-    Simon.prototype.reset = function() {
+    Simon.prototype.restart = function() {
+        this.index = 0;
         this.collection.length = 0;
+
         this.start();
 
         return this;
@@ -38,14 +45,39 @@
         this.currentColor = shuffle.pick(this.colors);
         this.collection.push(this.currentColor);
 
+        console.log(this.collection);
+
         return this;
     };
 
-    Simon.prototype.updateViewport = function() {
-        this.randomColor();
-        this.viewport.className = 'viewport gesture-' +  this.currentColor;
+    Simon.prototype.checkColor = function (color) {
+        var matched = this.collection[this.index] === color;
+        this.index += 1;
+
+        return matched;
+    };
+
+    Simon.prototype.review = function () {
+        // this.viewport.className = 'viewport gesture-' +  this.currentColor;
 
         return this;
+    };
+
+    Simon.prototype.motion = function (motion) {
+        if (this.checkColor(motion)) {
+            console.log('Good!');
+
+            if (this.index === this.collection.length) {
+                this.index = 0;
+                this.randomColor();
+                this.review();
+            }
+
+        } else {
+            console.log('Wrong!');
+            this.restart();
+            this.review();
+        }
     };
 
     window.Simon = Simon;
