@@ -6,6 +6,7 @@
         <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <link href="css/styles.css" rel="stylesheet" type="text/css">
+        </style>
     </head>
     <body>
         <section class="simon-viewport">
@@ -16,15 +17,16 @@
             <div class="simon-feedback"></div>
         </section>
         <script src="js/app.js"></script>
-        <script src="js/gesturekit.new.js"></script>
+        <script src="js/gesturekit.js"></script>
         <script>
-            var viewport = document.querySelector('#simon'),
-                game = new Simon(viewport);
+            window.onload = function () {
+                var viewport = document.querySelector('#simon'),
+                    game = new Simon(viewport);
 
                 gk({'uid': '5a48d9b0-fc11-47ac-bf80-36636c8428cb'});
 
                 gk
-                    .on('GK_RED', function () {
+                    .on('GK_RED', function (gesture, eve) {
                         game.motion('red');
                     })
                     .on('GK_BLUE', function () {
@@ -38,6 +40,8 @@
                     });
 
                 game.start();
+            };
+
         </script>
     </body>
 </html>

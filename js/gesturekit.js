@@ -1,607 +1,744 @@
-
-	//
-	// Startup
-	//
-	var _isDown, _points, _strokeID, _r, _g, _rc; // global variables
-	var _threshold = 400;
-	var canvas;
-	var jg;
-	var gestures_loaded = false;
-	var loading_worker_url;
-
-	var loadscroll;
-
-	var worker_loading, worker_visor, worker_cache;
-
-	// Storage methods
-	store_data = function (key, data){
-		$.jStorage.set(key, data);
-	};
-	get_data = function (key){
-		return value = $.jStorage.get(key);
-	};
-
-	// Js dynamic Loader function. Zepto compatible.
-	function loadScript (src, callback)
-	{
-		var s = document.createElement('script');
-		s.type = 'text/javascript';
-		s.src = src;
-		s.async = false;
-		s.onload = callback;
-		document.body.appendChild(s);
-	};
-
-	var GestureKit;
-	(GestureKit = function(id) {
-
-			gk = this;
-
-			// Load zepto.
-			loadScript('http://zeptojs.com/zepto.min.js', function() {
-
-				// Fetch variables for device_id to analytics.
-				Zepto.getJSON('http://freegeoip.net/json/', function(location) {
-				  ip = location.ip;
-				  country_name = location.country_name;
-				  country_code = location.country_code;
-				});
-
-				var version;
-				var container;
-
-				// typeof
-				if (typeof id === 'string') {
-
-					UIID = id;
-					version = 'uifree';
-					leapmotion = false;
-					gk_container = 'gesturekit';
-
-				} else {
-					var options = $.extend({}, id);
-
-					version = options.version;
-					UIID = options.id;
-
-					if ( options.container === undefined ){
-						gk_container = "gesturekit";
-					} else {
-						gk_container = options.container;
-					}
-
-
-					if ( options.container === undefined ){
-						leapmotion = false;
-					} else {
-						leapmotion = options.leapmotion;
-					}
-
-				}
-
-				// Filter action per version
-				if (version=='uifree'){
-
-					version = "uxfree"; //real name on the server, we will change.
-
-					try
-					{
-						// wrap all site into new gesturekit container to applñy scroll kynect.
-						/*$all = $('body').children( "*" ).not('SCRIPT');
-						var $gko = $("<div id='gesturekit'></div>").appendTo('body');
-						$gko.append($all);*/
-						$('body').attr("id",  gk_container);
-
-					}
-					catch(err) { console.log("err: " + err); }
-
-					// Overlay kinect class & style.
-					$( '#' + gk_container ).addClass( "overthrow" );
-					$( '#' + gk_container ).css( 'width', '100%' );
-					$( '#' + gk_container ).css( 'height', '100%' );
-					$( '#' + gk_container ).css( 'margin', '0px' );
-					$( '#' + gk_container ).css( 'z-index', '10000000' );
-
-					// Scroller kynect
-					$('.overthrow').css({webkitOverflowScrolling: 'touch', overflow: 'auto'});
-					$('.overthrow-enabled').css({webkitOverflowScrolling: 'touch', overflow: 'auto'});
-					$('.overthrow-enabled').css('height', '99.8%');
-					$('.overthrow-enabled').css('margin', '0');
-
-					// Append visor overlay on top of GestureKit
-					var gkelement = document.getElementById('gesturekit');
-					var visor_container = document.createElement('div');
-					visor_container.id = 'visor_container';
-					gkelement.appendChild(visor_container);
-					//document.getElementsByTagName("body")[0].insertBefore(visor_container, gkelement);
-
-				} else if (version=='inkwell'){
-
-					// For defining area on page
-					if (gk_container != "gesturekit"){
-
-					}
-
-					var overdiv = document.createElement('div');
-					overdiv.setAttribute('id','gesturekit');
-					overdiv.style.width = '100%';
-					overdiv.style.height = '100%';
-					overdiv.style.margin = '0px';
-					overdiv.style.zIndex = "10000000";
-					overdiv.style.position = "absolute";
-					document.body.insertBefore(overdiv, document.body.firstChild);
-
-					var visor_container = document.createElement('div');
-					visor_container.id = 'visor_container';
-					overdiv.appendChild(visor_container);
-
-				} else {
-					console.log("GestureKit: '" + version + "' is not recognized as a known version.");
-					return;
-				}
-
-				// UIID service url
-				var service_url = version + '/' + UIID;
-
-				//Optional clear data from cache comment after debug.
-				window.localStorage.clear();
-
-				// Creating global blob worker
-				window.URL = window.URL || window.webkitURL;
-				response = "self.onmessage=function(e){postMessage(e.data);}";
-				try {
-					blob = new Blob([response],{type:"text/javascript"});
-				} catch (e) {
-					window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder;
-					blob = new BlobBuilder();
-					blob.append(response);
-					blob = this.blob.getBlob();
-				}
-
-				// Llamada a update para ver si hay gestos y hay nuevos gestos o nuevos htmls (htmlsets y gesturesets).
-				var update_url = 'http://staging.gesturekit.com/sdk/getupdate/' + service_url;
-				$.ajax({
-					url: update_url,
-					type: "GET",
-					dataType: 'json',
-					success: function (data) {
-
-						content = data.content;
-
-						var local_html = window.localStorage.getItem("html_update");
-						html_update = data.html_update;
-
-						if ((local_html!=html_update)||(local_html==null)){
-
-							var html_url = 'http://staging.gesturekit.com/sdk/gethtml/' + service_url;
-
-							$.ajax({
-								url: html_url,
-								type: "GET",
-								dataType: 'json',
-								success: function (data) {
-
-									var urlArray = [];
-									var jsonHelp, jsonCache;
-									var htmlArray = data.html;
-
-									for (var i = 0; i < htmlArray.length; i++) {
-
-										var src = htmlArray[i].src;
-										var url = htmlArray[i].url;
-
-										var ext =  url.split('.').pop();
-
-										if (ext=="js"){
-
-											//Check if
-											if ( url.indexOf("loader.js") != -1 ){
-
-												var script = document.createElement('script');
-												script.src = url;
-												document.getElementsByTagName('head')[0].appendChild(script);
-
-												script.onload = function() {
-
-													worker_loading = new Worker(URL.createObjectURL(blob));
-
-													//Loader.
-
-													var load_visor = "loader = new Loader();" +
-														" loader.start();";
-
-													worker_loading.postMessage( load_visor );
-
-													worker_loading.onmessage = function (e) {
-														eval(e.data);
-													};
-
-
-												};
-
-
-											} else {
-												urlArray.push(url);
-											}
-
-										} else if (ext=="json") {
-
-											if ( url.indexOf("html_cache") != -1 ){
-
-												jsonCache = url;
-
-											} else if ( url.indexOf("help") != -1 ){
-
-												jsonHelp = url;
-
-											}
-
-										} else if (ext=="css") {
-											$('<style type="text/css"></style>')
-												.html('@import url("' + url + '")')
-												.appendTo("head");
-										}
-
-									}
-
-									getHtmlScripts(urlArray, jsonHelp);
-
-									// Local storage, please verify Guille,
-									//trying to call all javascript via jsonp and reloaded as chache.
-									/*$.ajax({
-										url: jsonCache,
-										jsonpCallback: 'htmlCallback',
-										contentType: 'application/json',
-										dataType: 'jsonp',
-										success: function(cahe) {
-											var jscripts = cahe[0].js;
-											// Store Scripts
-											window.localStorage.setItem("html_update", html_update);
-											window.localStorage.setItem("htmlsets", jscripts);
-										},
-										error: function(e) {
-											console.log(e.message);
-										}
-									});*/
-
-								}
-
-							});
-
-						} else {
-							// Guille load cache from somewhere.
-							//var scripts = get_data("htmlsets");
-							//eval(scripts);
-						}
-						//var local_gesture = get_data("gesture_update");
-						//gesture_update = data.gesture_update;
-
-					}
-				});
-
-				var getScript = Zepto.getScript;
-				Zepto.getScript = function( resources, callback ) {
-
-					var length = resources.length;
-					var handlerScript = function() {
-						counter++;
-						//Callback to continue with help gesture after...here also Images array.
-						if (counter==length-1){
-							callback && callback();
-						}
-					};
-					var counter = 0;
-					for ( var idx = 0; idx < length; idx++ ) {
-						var res = resources[idx];
-						loadScript(res, handlerScript);
-
-					};
-				};
-
-			});
-
-			window.onbeforeunload = function (e) {
-			  var e = e || window.event;
-
-			  //IE & Firefox
-			  if (e) {
-				buil_analytics();
-			  }
-
-			};
-
-			function buil_analytics(){
-
-				var device_type;
-
-				if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-					device_type = "mobile";
-				} else {
-					device_type = "pc";
-				}
-
-				var device_id = device_type + "-" + ip + "-" + country_name + "-" + country_code;
-
-				var seconds = new Date().getTime() / 1000 | 0;
-
-				var keys = $.jStorage.index();
-
-				var jsonObj = [];
-
-				for (var i = 0; i < keys.length; i++) {
-					if ( keys[i].indexOf("GK_") != -1 ){
-						var value = $.jStorage.get(keys[i]);
-						item = {};
-						item ["gesture_id"] = keys[i];
-						item ["count"] = value;
-						jsonObj.push(item);
-					}
-				}
-
-				var gesturesJson = JSON.stringify(jsonObj);
-
-				if (jsonObj.length>0){
-
-					var sendgesture = {
-						device_id : device_id,
-						platform_id : "inkwell",
-						uiid : UIID,
-						reports : [{
-							gestures : gesturesJson,
-							date : seconds
-						}]
-					};
-
-					var data = {};
-
-					data['uiid'] = UIID, //"6cdf2f42-0de5-4fac-af02-c503aea1fe2d";
-					data['json'] = sendgesture;
-
-					send_analytics(data);
-				}
-
-			};
-
-			function send_analytics(data) {
-				// Send analytics
-				$.ajax({
-					type: 'POST',
-					url: 'http://staging.gesturekit.com/sdk/sendanalytics/',
-					crossDomain: true,
-					data: {
-						json : JSON.stringify(data.json),
-						uiid : data.uiid
-					},
-					dataType: 'json',
-				});
-
-			};
-
-
-			getHtmlScripts = function (urlArray, jsonHelp) {
-
-				Zepto.getScript(urlArray, function () {
-					$.ajax({
-						url: jsonHelp,
-						jsonpCallback: 'helpCallback',
-						contentType: "application/json",
-						dataType: 'jsonp',
-						success: function(response) {
-
-								// Load touchy in case touch has been called or else
-								if (typeof(load_graphics_and_listeners) != "undefined") {
-									load_graphics_and_listeners(gk_container);
-								}
-
-								// Verify if loadPDollarForWeb() method is loaded
-								if (typeof(loadPDollarWeb) != "undefined") {
-
-									// Remove me;
-									$.jStorage.flush();
-
-									store_data("application_name", content[0].application_name);
-									store_data("application_description", content[0].application_description);
-									store_data("user_first_name", content[0].user_first_name);
-									store_data("user_last_name", content[0].user_last_name);
-
-									// Load $p Object
-									loadPDollarWeb();
-
-									// Call and load Gestures.
-									getGestures(response);
-
-								}
-
-								//Scroll
-								if (typeof(LoadScroll) != "undefined") {
-
-									LoadScroll();
-
-								}
-
-								// Variable containing the html help file
-								helpGestures = response;
-
-							},
-							error: function(e) {
-								console.log(e.message);
-							}
-						});
-
-						function jsonpCallback(response){
-
-							var resp = response;
-						}
-				});
-			}
-
-			getGestures = function (response) {
-
-				var gesture_url = 'http://staging.gesturekit.com/sdk/getgestures/' + UIID;
-
-				$.ajax({
-					url: gesture_url,
-					type: "GET",
-					dataType: 'json',
-					success: function (data_gestures) {
-
-						var gestureset = data_gestures.gestureset;
-						var gestures = gestureset.gestures;
-							//var t = gestures.length;
-						var all_gestures = gestures.concat(response);
-
-						// Help Gestures
-						helpArray = [];
-
-						for (var j = 0; j < gestures.length; j++) {
-
-							var method = gestures[j].method;
-							var metadata = gestures[j].metadata;
-							var img = gestures[j].img;
-
-							if (img != undefined){
-
-								var img_description = gestures[j].img_description;
-
-								var tempArray = {};
-
-								tempArray.method = method;
-								tempArray.img_description = img_description;
-								tempArray.img = img;
-
-								helpArray.push(tempArray);
-
-							}
-
-						}
-
-						// Push gestures into $p
-						loadGesturesWeb(all_gestures, function(state) {
-
-							gestures_loaded = state;
-
-							worker_visor = new Worker(URL.createObjectURL(blob));
-
-							//Visor.
-							var load_visor = "loader.stop();" +
-								" visor = new Visor();" +
-								" visor.setDaw(visor.VISOR_LOGO);";
-
-							worker_visor.postMessage( load_visor );
-
-							worker_visor.onmessage = function (e) {
-								eval(e.data);
-							};
-
-						});
-
-					},
-
-					error: function(e) {
-						console.log(e.message);
-					}
-				});
-
-			};
-
-
-			this.addGestureListener("gesture_detected", function (observable, eventType, recognized_gesture) {
-
-				console.log("ver: " + _r.metadata[recognized_gesture]);
-
-				// Analytics
-				var stored_gesture = get_data(recognized_gesture);
-				if (stored_gesture!=null){
-					store_data(recognized_gesture, stored_gesture+1);
-				} else {
-					store_data(recognized_gesture, 1);
-				}
-
-				// Metadata
-				var params;
-				if ( _r.metadata[recognized_gesture] != undefined ) {
-					params = _r.metadata[recognized_gesture];
-				}
-
-				// Check Method created
-				var fn = window[recognized_gesture];
-
-				if(typeof fn !== 'function'){
-					worker_visor.postMessage(
-						"visor.setDaw(visor.VISOR_WARNING);"
-					);
-					//return;
-				} else {
-					//Trigger Method
-					fn.apply(this, [params]);
-				}
-
-				// Finnaly fire event
-				gk.fire('gesture-recognized', recognized_gesture, params);
-
-
-			});
-
-		}).prototype = {
-
-			addGestureListener: function(type, method, scope, context) {
-				var listeners, handlers, scope;
-				if (!(listeners = this.listeners)) {
-					listeners = this.listeners = {};
-				}
-				if (!(handlers = listeners[type])){
-					handlers = listeners[type] = [];
-				}
-				handlers.push({
-					method: method,
-					scope: scope,
-					context: (context ? context : scope)
-				});
-			},
-			fireEvent: function(type, data, context) {
-				var listeners, handlers, i, n, handler, scope;
-				if (!(listeners = this.listeners)) {
-					return;
-				}
-				if (!(handlers = listeners[type])){
-					return;
-				}
-				for (i = 0, n = handlers.length; i < n; i++){
-					handler = handlers[i];
-					if (handler.method.call(
-						handler.scope, this, type, data
-					)===false) {
-						return false;
-					}
-				}
-				return true;
-			},
-			on: function(event, listener) {
-
-                var listening = this.listeners[event];
-
-                if (!listening) { listening = []; }
-
-                listening.push(listener);
-
-                this.listeners[event] = listening;
-
-                return this;
-			},
-			fire: function(event, method_name, metadata) {
-
-                var listening = this.listeners[event];
-
-                if (listening) {
-
-                        var args = Array.prototype.slice.call(arguments);
-
-                        args.shift();
-
-                        for (var i = 0, l = listening.length; i < l; i++) { listening[i].apply(this, args); }
+/*!
+ * Gesturekit v1.0.0
+ * http://gesturekit.com/
+ *
+ * Copyright (c) 2014, RoamTouch
+ * Released under the MIT license.
+ * http://gesturekit.com/
+ */
+(function (window) {
+'use strict';
+//
+// Point class
+//
+function Point(x, y, id) // constructor
+{
+    this.X = x;
+    this.Y = y;
+    this.ID = id; // stroke ID to which this point belongs (1,2,...)
+}
+
+//
+// PointCloud class: a point-cloud template
+//
+function PointCloud(name, points) // constructor
+{
+    this.Name = name;
+
+    var newpoints = new Array(points[0]);
+    for (var i = 1; i < points.length; i++)
+        newpoints[i] = new Point(points[i].X, points[i].Y, points[i].ID);
+    this.Points = newpoints;
+
+    this.DrawingPoints = this.Points;
+}
+//
+// Result class
+//
+function Result(name, score) // constructor
+{
+    this.Name = name;
+    this.Score = score;
+}
+//
+// PDollarRecognizer class constants
+//
+var NumPointClouds; // = 8;
+var NumPoints = 32;
+var Origin = new Point(0,0,0);
+var RECOGNITION_THRESHOLD = 1.5;
+var NO_MATCH_NAME = "No match.";
+var NO_MATCH_SCORE = 0.0;
+
+function setNumPointClouds(num){
+    NumPointClouds = NumPointClouds + num;
+}
+//
+// PDollarRecognizer class
+//
+function PDollarRecognizer() // constructor
+{
+    //
+    // one predefined point-cloud for each gesture
+    //
+    this.PointClouds = new Array(NumPointClouds);
+    var ScopeClouds = this;
+    var PointCloudScope = this;
+    this.metadata = {};
+    //
+    // The $P Point-Cloud Recognizer API begins here -- 3 methods: Recognize(), AddGesture(), DeleteUserGestures()
+    //
+    this.Recognize = function (points) {
+        points = Resample(points, NumPoints);
+        points = Scale(points);
+        points = TranslateTo(points, Origin);
+
+        var b1 = +Infinity;
+        var u1 = -1;
+        var b2 = +Infinity;
+        var u2 = -1;
+
+        for (var i = 0; i < this.PointClouds.length; i++) // for each point-cloud template
+        {
+            var d = GreedyCloudMatch(points, this.PointClouds[i]);
+            if (d < b1) {
+                b2 = b1;
+                u2 = u1;
+
+                b1 = d; // best (least) distance
+                u1 = i; // point-cloud
+            }
+            else
+                if (d < b2) {
+                    b2 = d;
+                    u2 = i;
                 }
+        }
 
-                return this;
-			}
+        if (u1 == -1)
+            return new Result(NO_MATCH_NAME, NO_MATCH_SCORE);
+        else {
+            var d1 = GestureDistance(points, this.PointClouds[u1].Points);
+            var d2 = GestureDistance(points, this.PointClouds[u2].Points);
+            var name = "No match.";
+            var best = 0.0;
+            if (d2 < d1)
+            {
+                name = this.PointClouds[u2].Name;
+                best = b2;
+            }
+            else
+            {
+                name = this.PointClouds[u1].Name;
+                best = b1;
+            }
+            if(best<RECOGNITION_THRESHOLD)
+                return new Result(name, Math.max((best - 2.0) / -2.0, 0.0));
+            else
+                return new Result(NO_MATCH_NAME, NO_MATCH_SCORE);
+        }
+    };
+    this.AddGesture = function(name, points)
+    {
+        this.PointClouds[this.PointClouds.length] = new PointCloud(name, points);
+        var num = 0;
+        for (var i = 0; i < this.PointClouds.length; i++) {
+            if (this.PointClouds[i].Name == name)
+                num++;
+        }
+        return num;
+    };
 
-	};
+    this.DeleteUserGestures = function()
+    {
+        this.PointClouds.length = NumPointClouds; // clear any beyond the original set
+        return NumPointClouds;
+    };
+
+    this.LoadGestureSet = function(gestureset)
+    {
+        PointCloudScope.PointClouds = new Array(gestureset.length);
+        for (var i= 0; i < gestureset.length; i++) {
+            var method = gestureset[i].method;
+            var pointaArray = new Array();
+            var gesture = gestureset[i].gesture;
+            for (var j = 0; j < gesture.length; j++) {
+                var id = gesture[j].ID;
+                var X = gesture[j].X;
+                var Y = gesture[j].Y;
+                pointaArray[j]  = new Point(X,Y,id);
+            }
+            PointCloudScope.PointClouds[i] = new PointCloud(method, pointaArray);
+        }
+        console.log(PointCloudScope.toString);
+    };
+
+}
+//
+// Private helper functions from this point down
+//
+function GreedyCloudMatch(points, P)
+{
+    var e = 0.50;
+    var step = Math.floor(Math.pow(points.length, 1 - e));
+    var min = +Infinity;
+    for (var i = 0; i < points.length; i += step) {
+        var d1 = CloudDistance(points, P.Points, i);
+        var d2 = CloudDistance(P.Points, points, i);
+        min = Math.min(min, Math.min(d1, d2)); // min3
+    }
+    return min;
+}
+function CloudDistance(pts1, pts2, start)
+{
+    var matched = new Array(pts1.length); // pts1.length == pts2.length
+    for (var k = 0; k < pts1.length; k++)
+        matched[k] = false;
+    var sum = 0;
+    var i = start;
+    do
+    {
+        var index = -1;
+        var min = +Infinity;
+        for (var j = 0; j < matched.length; j++)
+        {
+            if (!matched[j]) {
+                var d = Distance(pts1[i], pts2[j]);
+                if (d < min) {
+                    min = d;
+                    index = j;
+                }
+            }
+        }
+        matched[index] = true;
+        var weight = 1 - ((i - start + pts1.length) % pts1.length) / pts1.length;
+        sum += weight * min;
+        i = (i + 1) % pts1.length;
+    } while (i != start);
+    return sum;
+}
+function Resample(points, n)
+{
+    var I = PathLength(points) / (n - 1); // interval length
+    var D = 0.0;
+    var newpoints = new Array(points[0]);
+    for (var i = 1; i < points.length; i++)
+    {
+        if (points[i].ID == points[i-1].ID)
+        {
+            var d = Distance(points[i - 1], points[i]);
+            if ((D + d) >= I)
+            {
+                var qx = points[i - 1].X + ((I - D) / d) * (points[i].X - points[i - 1].X);
+                var qy = points[i - 1].Y + ((I - D) / d) * (points[i].Y - points[i - 1].Y);
+                var q = new Point(qx, qy, points[i].ID);
+                newpoints[newpoints.length] = q; // append new point 'q'
+                points.splice(i, 0, q); // insert 'q' at position i in points s.t. 'q' will be the next i
+                D = 0.0;
+            }
+            else D += d;
+        }
+    }
+    if (newpoints.length == n - 1) // sometimes we fall a rounding-error short of adding the last point, so add it if so
+        newpoints[newpoints.length] = new Point(points[points.length - 1].X, points[points.length - 1].Y, points[points.length - 1].ID);
+    return newpoints;
+}
+function Scale(points)
+{
+    var minX = +Infinity, maxX = -Infinity, minY = +Infinity, maxY = -Infinity;
+    for (var i = 0; i < points.length; i++) {
+        minX = Math.min(minX, points[i].X);
+        minY = Math.min(minY, points[i].Y);
+        maxX = Math.max(maxX, points[i].X);
+        maxY = Math.max(maxY, points[i].Y);
+    }
+    var size = Math.max(maxX - minX, maxY - minY);
+    var newpoints = new Array();
+    for (var i = 0; i < points.length; i++) {
+        var qx = (points[i].X - minX) / size;
+        var qy = (points[i].Y - minY) / size;
+        newpoints[newpoints.length] = new Point(qx, qy, points[i].ID);
+    }
+    return newpoints;
+}
+function TranslateTo(points, pt) // translates points' centroid
+{
+    var c = Centroid(points);
+    var newpoints = new Array();
+    for (var i = 0; i < points.length; i++) {
+        var qx = points[i].X + pt.X - c.X;
+        var qy = points[i].Y + pt.Y - c.Y;
+        newpoints[newpoints.length] = new Point(qx, qy, points[i].ID);
+    }
+    return newpoints;
+}
+function Centroid(points)
+{
+    var x = 0.0, y = 0.0;
+    for (var i = 0; i < points.length; i++) {
+        x += points[i].X;
+        y += points[i].Y;
+    }
+    x /= points.length;
+    y /= points.length;
+    return new Point(x, y, 0);
+}
+function PathDistance(pts1, pts2) // average distance between corresponding points in two paths
+{
+    var d = 0.0;
+    for (var i = 0; i < pts1.length; i++) // assumes pts1.length == pts2.length
+        d += Distance(pts1[i], pts2[i]);
+    return d / pts1.length;
+}
+function PathLength(points) // length traversed by a point path
+{
+    var d = 0.0;
+    for (var i = 1; i < points.length; i++)
+    {
+        if (points[i].ID == points[i-1].ID)
+            d += Distance(points[i - 1], points[i]);
+    }
+    return d;
+}
+function Distance(p1, p2) // Euclidean distance between two points
+{
+    if (p2==undefined){
+     alert();
+    }
+    var dx = p2.X - p1.X;
+    var dy = p2.Y - p1.Y;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function GestureDistance(g1, g2) {
+    var d = 0.0;
+    var nr = g1.length;
+    if(g2.length < nr)
+        nr = g2.length;
+
+    for (var i = 0; i < nr; i++) {
+        d = d + Distance(g1[i], g2[i]);
+    }
+
+    return d;
+}
+
+function Choose(best, secondBest, gesture) {
+    var d1 = GestureDistance(gesture, best.Points);
+    var d2 = GestureDistance(gesture, secondBest.Points);
+    if (d2 < d1)
+        return secondBest;
+    else
+        return best;
+}
+function Emitter() {
+    return this;
+}
+
+/**
+ * Adds a listener to the collection for a specified event.
+ * @memberof! Emitter.prototype
+ * @function
+ * @param {String} event The event name to subscribe.
+ * @param {Function} listener Listener function.
+ * @param {Boolean} once Indicate if a listener function will be called only one time.
+ * @example
+ * // Will add an event listener to 'ready' event.
+ * emitter.on('ready', listener);
+ */
+Emitter.prototype.on = function (event, listener, once) {
+
+    this._eventsCollection = this._eventsCollection || {};
+
+    listener.once = once || false;
+
+    if (this._eventsCollection[event] === undefined) {
+        this._eventsCollection[event] = [];
+    }
+
+    this._eventsCollection[event].push(listener);
+
+    return this;
+};
+
+/**
+ * Adds a listener to the collection for a specified event to will execute only once.
+ * @memberof! Emitter.prototype
+ * @function
+ * @param {String} event Event name.
+ * @param {Function} listener Listener function.
+ * @returns {Object}
+ * @example
+ * // Will add an event handler to 'contentLoad' event once.
+ * widget.once('contentLoad', listener);
+ */
+Emitter.prototype.once = function (event, listener) {
+
+    this.on(event, listener, true);
+
+    return this;
+};
+
+/**
+ * Removes a listener from the collection for a specified event.
+ * @memberof! Emitter.prototype
+ * @function
+ * @param {String} event Event name.
+ * @param {Function} listener Listener function.
+ * @returns {Object}
+ * @example
+ * // Will remove event listener to 'ready' event.
+ * widget.off('ready', listener);
+ */
+Emitter.prototype.off = function (event, listener) {
+
+    if (this._eventsCollection === undefined) {
+        return this;
+    }
+
+    var listeners = this._eventsCollection[event],
+        i = 0,
+        len;
+
+    if (listeners !== undefined) {
+        len = listeners.length;
+        for (i; i < len; i += 1) {
+            if (listeners[i] === listener) {
+                listeners.splice(i, 1);
+                break;
+            }
+        }
+    }
+
+    return this;
+};
+
+/**
+ * Returns all listeners from the collection for a specified event.
+ * @memberof! Emitter.prototype
+ * @function
+ * @param {String} event The event name.
+ * @returns {Array}
+ * @example
+ * // Returns listeners from 'ready' event.
+ * widget.getListeners('ready');
+ */
+Emitter.prototype.getListeners = function (event) {
+
+    return this._eventsCollection[event];
+};
+
+/**
+ * Execute each item in the listener collection in order with the specified data.
+ * @memberof! Emitter.prototype
+ * @function
+ * @param {String} event The name of the event you want to emit.
+ * @param {...Object} var_args Data to pass to the listeners.
+ * @example
+ * // Will emit the 'ready' event with 'param1' and 'param2' as arguments.
+ * widget.emit('ready', 'param1', 'param2');
+ */
+Emitter.prototype.emit = function () {
+
+    var args = Array.prototype.slice.call(arguments, 0), // converted to array
+        event = args.shift(), // Store and remove events from args
+        listeners,
+        i = 0,
+        len;
+
+    if (typeof event === 'string') {
+        event = {'type': event};
+    }
+
+    if (!event.target) {
+        event.target = this;
+    }
+
+    if (this._eventsCollection !== undefined && this._eventsCollection[event.type] !== undefined) {
+        listeners = this._eventsCollection[event.type];
+        len = listeners.length;
+
+        for (i; i < len; i += 1) {
+            listeners[i].apply(this, args);
+
+            if (listeners[i].once) {
+                this.off(event.type, listeners[i]);
+                len -= 1;
+                i -= 1;
+            }
+        }
+    }
+
+    return this;
+};
+var helpers = {};
+
+/**
+ * Returns a shallow-copied clone of a given object.
+ * @memberof Q
+ * @param {Object} obj A given object to clone.
+ * @returns {Object}
+ * @example
+ * Q.clone(object);
+ */
+helpers.clone = function clone(obj) {
+    var copy = {},
+        prop;
+
+    for (prop in obj) {
+        if (obj[prop]) {
+            copy[prop] = obj[prop];
+        }
+    }
+
+    return copy;
+};
+
+/**
+ * Extends a given object with properties from another object.
+ * @memberof Q
+ * @param {Object} destination A given object to extend its properties.
+ * @param {Object} from A given object to share its properties.
+ * @returns {Object}
+ * @example
+ * var foo = {
+ *     'baz': 'qux'
+ * };
+
+ * var bar = {
+ *     'quux': 'corge'
+ * };
+ *
+ * Q.extend(foo, bar);
+ *
+ * console.log(foo.quux) // returns 'corge'
+ */
+helpers.extend = function extend(destination, from) {
+
+    var prop;
+
+    for (prop in from) {
+        if (from[prop]) {
+            destination[prop] = from[prop];
+        }
+    }
+
+    return destination;
+};
+
+/**
+ * Inherits prototype properties from `uber` into `child` constructor.
+ * @memberof Q
+ * @param {Function} child A given constructor function who inherits.
+ * @param {Function} uber A given constructor function to inherit.
+ * @returns {Object}
+ * @example
+ * Q.inherit(child, uber);
+ */
+helpers.inherit = function inherit(child, uber) {
+    var obj = child.prototype || {};
+    child.prototype = helpers.extend(obj, uber.prototype);
+
+    return uber.prototype;
+};
+
+// Module dependencies.
+var _isDown = 0,
+    _points = [],
+    moving = false,
+    defaults = {
+        'version': 'uifree',
+        'container': document.getElementsByTagName('body')[0],
+        'visor': 'false',
+        'leapmotion': false
+    };
+
+function customizeOptions(options) {
+    var prop;
+    for (prop in defaults) {
+        if (!options.hasOwnProperty(prop)) {
+            options[prop] = defaults[prop];
+        }
+    }
+    return options;
+}
+
+/**
+ * Creates ...
+ * @constructor
+ * @augments Emitter
+ * @param {(Object | String)} options Configuration options or an string indicating UID.
+ * @returns {gesturekit} Returns a new instance of GestureKit.
+ */
+function GestureKit(options) {
+    this.init(options);
+
+    return this;
+}
+
+// Inherits from Emitter
+// helpers.inherit(GestureKit, Emitter);
+
+/**
+ * Initialize a new instance of GestureKit.
+ * @memberof! GestureKit.prototype
+ * @function
+ * @param {(Object | String)} options Configuration options or an string indicating UID.
+ * @returns {gesturekit} Returns a new instance of GestureKit.
+ */
+GestureKit.prototype.init = function(options) {
+    var that = this;
+
+    this.options = customizeOptions(options || {});
+
+    this.gk_container = this.options.container;
+
+    this[this.options.version]();
+
+    this.create$Pinstance();
+
+    this.gk_container.addEventListener('touchmove', function (eve) {
+        eve.preventDefault();
+        moving = true;
+        that.setPoints(eve.touches);
+    });
+
+    this.gk_container.addEventListener('touchend', function () {
+        if (!moving) { return; }
+
+        moving = false;
+
+        that.recognizeGesture();
+    });
+
+
+    return this;
+};
+
+/**
+ *
+ * @memberof! GestureKit.prototype
+ * @function
+ * @returns {gesturekit} Returns a new instance of GestureKit.
+ */
+GestureKit.prototype.uifree = function() {
+    // Config GestureKit Container
+    this.gk_container.style.cssText = 'width: 100%; height: 100%; overflow: auto; -webkit-overflow-scrolling: touch;';
+
+    return this;
+};
+
+/**
+ * Creates a $P instance.
+ * @memberof! GestureKit.prototype
+ * @function
+ * @returns {gesturekit} Returns a new instance of GestureKit.
+ */
+GestureKit.prototype.create$Pinstance = function () {
+    this._r = new PDollarRecognizer();
+
+    this.getGestures();
+
+    return this;
+}
+
+/**
+ *
+ * @memberof! GestureKit.prototype
+ * @function
+ * @returns {gesturekit} Returns a new instance of GestureKit.
+ */
+GestureKit.prototype.getGestures = function () {
+    var that = this,
+        xhr = new XMLHttpRequest(),
+        response;
+
+    xhr.open('GET', 'http://staging.gesturekit.com/sdk/getgestures/' + this.options.uid);
+
+    // Add events
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === xhr.DONE) {
+            status = xhr.status;
+
+            if ((status >= 200 && status < 300) || status === 304 || status === 0) {
+                response = JSON.parse(xhr.response || xhr.responseText);
+                that.addGestures(response.gestureset.gestures);
+
+            } else {
+                console.log('Fail');
+            }
+         }
+    };
+
+    xhr.send();
+
+    return this;
+};
+
+
+/**
+ *
+ * @memberof! GestureKit.prototype
+ * @function
+ * @returns {gesturekit} Returns a new instance of GestureKit.
+ */
+GestureKit.prototype.addGestures = function (data, callback) {
+
+    var i = 0,
+        j,
+        name,
+        meta,
+        gesture,
+        pointaArray,
+        len = data.length;
+
+    this._r.PointClouds = [];
+
+    for (i; i < len; i += 1) {
+        name = data[i].method;
+        meta = data[i].metadata;
+
+        if (meta !== "" && meta != null && this._r.metadata[name] === undefined ) {
+            this._r.metadata[name] = meta;
+        }
+
+        pointaArray = [];
+        gesture = data[i].gesture;
+
+        for (j = 0; j < gesture.length; j += 1) {
+            pointaArray.push(new Point(parseFloat(gesture[j].X), parseFloat(gesture[j].Y), gesture[j].ID));
+        }
+
+        this._r.PointClouds[i] = new PointCloud(name, pointaArray);
+    }
+
+    return this;
+};
+
+GestureKit.prototype.setPoints = function (touches) {
+
+    var i = 0,
+        len = touches.length,
+        ts,
+        x,
+        y;
+
+    _isDown = len;
+
+    if (_isDown > 0) {
+
+        for (i; i < len; i += 1) {
+
+            ts = touches[i];
+            x = ts.pageX;
+            y = ts.pageY;
+
+            _points.push(new Point(x, y, i));
+        }
+
+    }
+
+    _isDown = 0;
+};
+
+GestureKit.prototype.recognizeGesture = function () {
+    var result = this._r.Recognize(_points);
+    console.log("gesture: " + result.Name + " score: " + result.Score);
+
+    if (parseFloat(result.Score) !== 0.0) {
+        gk.emit(result.Name, result);
+    }
+    _points.length = 0;
+    _isDown = 0;
+
+    return this;
+}
+function gk(options) {
+    gk.recognizer = gk.recognizer || new GestureKit(options);
+    return gk;
+}
+
+helpers.extend(gk, new Emitter());
+
+window.gk = gk;
+}(this));
