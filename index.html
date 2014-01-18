@@ -23,10 +23,17 @@
                 var viewport = document.querySelector('#simon'),
                     game = new Simon(viewport);
 
-                gk({'uid': '5a48d9b0-fc11-47ac-bf80-36636c8428cb'});
-
                 gk
-                    .on('GK_RED', function (gesture, eve) {
+                    .on('init', function () {
+                        game.start();
+                    })
+                    .on('GK_CROSS', function () {
+                        alert('Cross');
+                    })
+                    .on('GK_PAUSE', function () {
+                        alert('Pause');
+                    })
+                    .on('GK_RED', function () {
                         game.motion('red');
                     })
                     .on('GK_BLUE', function () {
@@ -39,7 +46,9 @@
                         game.motion('yellow');
                     });
 
-                game.start();
+                gk({'uid': '5a48d9b0-fc11-47ac-bf80-36636c8428cb'});
+
+                // game.start();
             };
 
         </script>

@@ -8,6 +8,76 @@
  */
 (function (window) {
 'use strict';
+var helpers = {};
+
+/**
+ * Returns a shallow-copied clone of a given object.
+ * @memberof Q
+ * @param {Object} obj A given object to clone.
+ * @returns {Object}
+ * @example
+ * Q.clone(object);
+ */
+helpers.clone = function clone(obj) {
+    var copy = {},
+        prop;
+
+    for (prop in obj) {
+        if (obj[prop]) {
+            copy[prop] = obj[prop];
+        }
+    }
+
+    return copy;
+};
+
+/**
+ * Extends a given object with properties from another object.
+ * @memberof Q
+ * @param {Object} destination A given object to extend its properties.
+ * @param {Object} from A given object to share its properties.
+ * @returns {Object}
+ * @example
+ * var foo = {
+ *     'baz': 'qux'
+ * };
+
+ * var bar = {
+ *     'quux': 'corge'
+ * };
+ *
+ * Q.extend(foo, bar);
+ *
+ * console.log(foo.quux) // returns 'corge'
+ */
+helpers.extend = function extend(destination, from) {
+
+    var prop;
+
+    for (prop in from) {
+        if (from[prop]) {
+            destination[prop] = from[prop];
+        }
+    }
+
+    return destination;
+};
+
+/**
+ * Inherits prototype properties from `uber` into `child` constructor.
+ * @memberof Q
+ * @param {Function} child A given constructor function who inherits.
+ * @param {Function} uber A given constructor function to inherit.
+ * @returns {Object}
+ * @example
+ * Q.inherit(child, uber);
+ */
+helpers.inherit = function inherit(child, uber) {
+    var obj = child.prototype || {};
+    child.prototype = helpers.extend(obj, uber.prototype);
+
+    return uber.prototype;
+};
 //
 // Point class
 //
@@ -451,87 +521,12 @@ Emitter.prototype.emit = function () {
 
     return this;
 };
-var helpers = {};
-
-/**
- * Returns a shallow-copied clone of a given object.
- * @memberof Q
- * @param {Object} obj A given object to clone.
- * @returns {Object}
- * @example
- * Q.clone(object);
- */
-helpers.clone = function clone(obj) {
-    var copy = {},
-        prop;
-
-    for (prop in obj) {
-        if (obj[prop]) {
-            copy[prop] = obj[prop];
-        }
-    }
-
-    return copy;
+var defaults = {
+    'version': 'uifree',
+    'container': document.getElementsByTagName('body')[0],
+    'visor': 'false',
+    'leapmotion': false
 };
-
-/**
- * Extends a given object with properties from another object.
- * @memberof Q
- * @param {Object} destination A given object to extend its properties.
- * @param {Object} from A given object to share its properties.
- * @returns {Object}
- * @example
- * var foo = {
- *     'baz': 'qux'
- * };
-
- * var bar = {
- *     'quux': 'corge'
- * };
- *
- * Q.extend(foo, bar);
- *
- * console.log(foo.quux) // returns 'corge'
- */
-helpers.extend = function extend(destination, from) {
-
-    var prop;
-
-    for (prop in from) {
-        if (from[prop]) {
-            destination[prop] = from[prop];
-        }
-    }
-
-    return destination;
-};
-
-/**
- * Inherits prototype properties from `uber` into `child` constructor.
- * @memberof Q
- * @param {Function} child A given constructor function who inherits.
- * @param {Function} uber A given constructor function to inherit.
- * @returns {Object}
- * @example
- * Q.inherit(child, uber);
- */
-helpers.inherit = function inherit(child, uber) {
-    var obj = child.prototype || {};
-    child.prototype = helpers.extend(obj, uber.prototype);
-
-    return uber.prototype;
-};
-
-// Module dependencies.
-var _isDown = 0,
-    _points = [],
-    moving = false,
-    defaults = {
-        'version': 'uifree',
-        'container': document.getElementsByTagName('body')[0],
-        'visor': 'false',
-        'leapmotion': false
-    };
 
 function customizeOptions(options) {
     var prop;
@@ -548,74 +543,79 @@ function customizeOptions(options) {
  * @constructor
  * @augments Emitter
  * @param {(Object | String)} options Configuration options or an string indicating UID.
- * @returns {gesturekit} Returns a new instance of GestureKit.
+ * @returns {recognizer} Returns a new instance of Recognizer.
  */
-function GestureKit(options) {
+function Recognizer(options) {
     this.init(options);
 
     return this;
 }
 
 // Inherits from Emitter
-// helpers.inherit(GestureKit, Emitter);
+helpers.inherit(Recognizer, Emitter);
 
 /**
- * Initialize a new instance of GestureKit.
- * @memberof! GestureKit.prototype
+ * Initialize a new instance of Recognizer.
+ * @memberof! Recognizer.prototype
  * @function
  * @param {(Object | String)} options Configuration options or an string indicating UID.
- * @returns {gesturekit} Returns a new instance of GestureKit.
+ * @returns {recognizer} Returns a new instance of Recognizer.
  */
-GestureKit.prototype.init = function(options) {
-    var that = this;
+Recognizer.prototype.init = function(options) {
+    var that = this,
+        moving = false,
+        foo;
+
+    this.pointsCollection = [];
 
     this.options = customizeOptions(options || {});
 
-    this.gk_container = this.options.container;
+    this.container = this.options.container;
 
     this[this.options.version]();
 
     this.create$Pinstance();
 
-    this.gk_container.addEventListener('touchmove', function (eve) {
+    // TODO: Use a requestAnimationFrame to decouple the touch event from the setPoints() function
+    this.container.addEventListener('touchmove', function (eve) {
         eve.preventDefault();
+        clearTimeout(foo);
         moving = true;
         that.setPoints(eve.touches);
     });
 
-    this.gk_container.addEventListener('touchend', function () {
+    this.container.addEventListener('touchend', function () {
         if (!moving) { return; }
-
-        moving = false;
-
-        that.recognizeGesture();
+        foo = setTimeout(function () {
+            moving = false;
+            that.recognizeGesture();
+        }, 500);
     });
-
 
     return this;
 };
 
 /**
  *
- * @memberof! GestureKit.prototype
+ * @memberof! Recognizer.prototype
  * @function
- * @returns {gesturekit} Returns a new instance of GestureKit.
+ * @returns {recognizer} Returns a new instance of Recognizer.
  */
-GestureKit.prototype.uifree = function() {
-    // Config GestureKit Container
-    this.gk_container.style.cssText = 'width: 100%; height: 100%; overflow: auto; -webkit-overflow-scrolling: touch;';
+Recognizer.prototype.uifree = function() {
+    // Config Recognizer Container
+    this.container.style.cssText = 'width: 100%; height: 100%; overflow: auto; -webkit-overflow-scrolling: touch;';
 
     return this;
 };
 
 /**
- * Creates a $P instance.
- * @memberof! GestureKit.prototype
+ * Creates a PDollarRecognizer instance.
+ * @memberof! Recognizer.prototype
  * @function
- * @returns {gesturekit} Returns a new instance of GestureKit.
+ * @returns {recognizer} Returns a new instance of Recognizer.
  */
-GestureKit.prototype.create$Pinstance = function () {
-    this._r = new PDollarRecognizer();
+Recognizer.prototype.create$Pinstance = function () {
+    this.pdollar = new PDollarRecognizer();
 
     this.getGestures();
 
@@ -624,11 +624,11 @@ GestureKit.prototype.create$Pinstance = function () {
 
 /**
  *
- * @memberof! GestureKit.prototype
+ * @memberof! Recognizer.prototype
  * @function
- * @returns {gesturekit} Returns a new instance of GestureKit.
+ * @returns {recognizer} Returns a new instance of Recognizer.
  */
-GestureKit.prototype.getGestures = function () {
+Recognizer.prototype.getGestures = function () {
     var that = this,
         xhr = new XMLHttpRequest(),
         response;
@@ -643,6 +643,7 @@ GestureKit.prototype.getGestures = function () {
             if ((status >= 200 && status < 300) || status === 304 || status === 0) {
                 response = JSON.parse(xhr.response || xhr.responseText);
                 that.addGestures(response.gestureset.gestures);
+                that.emit('getgestures');
 
             } else {
                 console.log('Fail');
@@ -658,11 +659,11 @@ GestureKit.prototype.getGestures = function () {
 
 /**
  *
- * @memberof! GestureKit.prototype
+ * @memberof! Recognizer.prototype
  * @function
- * @returns {gesturekit} Returns a new instance of GestureKit.
+ * @returns {recognizer} Returns a new instance of Recognizer.
  */
-GestureKit.prototype.addGestures = function (data, callback) {
+Recognizer.prototype.addGestures = function (data, callback) {
 
     var i = 0,
         j,
@@ -672,14 +673,14 @@ GestureKit.prototype.addGestures = function (data, callback) {
         pointaArray,
         len = data.length;
 
-    this._r.PointClouds = [];
+    this.pdollar.PointClouds = [];
 
     for (i; i < len; i += 1) {
         name = data[i].method;
         meta = data[i].metadata;
 
-        if (meta !== "" && meta != null && this._r.metadata[name] === undefined ) {
-            this._r.metadata[name] = meta;
+        if (meta !== "" && meta != null && this.pdollar.metadata[name] === undefined ) {
+            this.pdollar.metadata[name] = meta;
         }
 
         pointaArray = [];
@@ -689,56 +690,85 @@ GestureKit.prototype.addGestures = function (data, callback) {
             pointaArray.push(new Point(parseFloat(gesture[j].X), parseFloat(gesture[j].Y), gesture[j].ID));
         }
 
-        this._r.PointClouds[i] = new PointCloud(name, pointaArray);
+        this.pdollar.PointClouds[i] = new PointCloud(name, pointaArray);
     }
 
     return this;
 };
 
-GestureKit.prototype.setPoints = function (touches) {
+/**
+ *
+ * @memberof! Recognizer.prototype
+ * @function
+ * @returns {recognizer} Returns a new instance of Recognizer.
+ */
+Recognizer.prototype.setPoints = function (touches) {
 
     var i = 0,
-        len = touches.length,
+        pointers = touches.length,
         ts,
         x,
         y;
 
-    _isDown = len;
+    if (pointers > 0) {
 
-    if (_isDown > 0) {
-
-        for (i; i < len; i += 1) {
+        for (i; i < pointers; i += 1) {
 
             ts = touches[i];
             x = ts.pageX;
             y = ts.pageY;
 
-            _points.push(new Point(x, y, i));
+            this.pointsCollection.push(new Point(x, y, i));
         }
 
     }
 
-    _isDown = 0;
+    return this;
 };
 
-GestureKit.prototype.recognizeGesture = function () {
-    var result = this._r.Recognize(_points);
+/**
+ *
+ * @memberof! Recognizer.prototype
+ * @function
+ * @returns {recognizer} Returns a new instance of Recognizer.
+ */
+Recognizer.prototype.recognizeGesture = function () {
+    var result = this.pdollar.Recognize(this.pointsCollection);
     console.log("gesture: " + result.Name + " score: " + result.Score);
 
-    if (parseFloat(result.Score) !== 0.0) {
-        gk.emit(result.Name, result);
+    if (parseFloat(result.Score) !== 0.3) {
+        this.emit('recognize', result);
     }
-    _points.length = 0;
-    _isDown = 0;
+
+    this.pointsCollection.length = 0;
 
     return this;
 }
 function gk(options) {
-    gk.recognizer = gk.recognizer || new GestureKit(options);
+
+    if (gk.recognizer === undefined) {
+        gk.recognizer = new Recognizer(options);
+        mediator();
+    }
+
     return gk;
+}
+
+function mediator() {
+
+    gk.recognizer.on('recognize', function (gesture) {
+        gk.emit(gesture.Name, gesture);
+        gk.emit('recognize', gesture);
+    });
+
+    gk.recognizer.on('getgestures', function () {
+        gk.emit('init');
+    });
+
 }
 
 helpers.extend(gk, new Emitter());
 
+// Expose gk
 window.gk = gk;
 }(this));
